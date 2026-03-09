@@ -1,0 +1,7 @@
+***************************
+THis document's sole purpose is to have a day to day timeline of what was done on which date. 
+
+09-03-2026:-> Set up auth (currently using jwt).
+              learnt abt oauth2 while implementation , might switch to oauth2 later .
+              JWT IMPORT DEPENDENCY FAILING . Resolve in next commit .
+                
