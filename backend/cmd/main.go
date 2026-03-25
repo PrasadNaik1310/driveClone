@@ -5,6 +5,8 @@ import (
 
 	"github.com/PrasadNaik1310/driveClone/db"
 	"github.com/PrasadNaik1310/driveClone/handlers"
+
+	//"github.com/PrasadNaik1310/driveClone/routes"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
@@ -45,9 +47,13 @@ func main() {
 	api := r.Group("/api")
 	{
 		auth := api.Group("/auth")
-		auth.POST("/login", handlers.Login)
 		{
-
+			auth.POST("/login", handlers.Login)
+		}
+		folder := api.Group("/folder")
+		{
+			folder.POST("/CreateFolder", handlers.CreateFolder)
+			folder.GET("DeleteFolder", handlers.DeleteFolder)
 		}
 	}
 }

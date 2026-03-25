@@ -9,6 +9,7 @@ import (
 	"github.com/PrasadNaik1310/driveClone/db"
 	"github.com/PrasadNaik1310/driveClone/models"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func Login(c *gin.Context) {
@@ -28,14 +29,14 @@ func Login(c *gin.Context) {
 		return
 
 	}
-	jwt := os.Getenv("JWT_SECRET")
-	if jwt == "" {
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
 		log.Printf("jwt secret not found in environment , check for secret config ")
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": "ACCESS TOKEN NOT CONFIGURED , INTERNAL SERVER SIDE ERROR ."})
 		return
 	}
 
-	log.Printf("JWT_SECRET for token generation: %s", jwt[:10]+"...")
+	log.Printf("JWT_SECRET for token generation: %s", jwtSecret[:10]+"...")
 
 	// Generate token
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -44,7 +45,7 @@ func Login(c *gin.Context) {
 		"exp": time.Now().Add(time.Hour * 24).Unix(),
 	})
 
-	tokenString, err := token.SignedString([]byte(jwt))
+	tokenString, err := token.SignedString([]byte(jwtSecret))
 	if err != nil {
 		log.Printf("Failed to sign token: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
