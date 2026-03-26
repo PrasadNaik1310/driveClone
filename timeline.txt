@@ -15,4 +15,10 @@ THis document's sole purpose is to have a day to day timeline of what was done o
 25:-3-2026:->
                 finally done with Setting up the folder routes . 
 
+26-03-2026:-> 
+            Folder hirerachy setup complete . Attempted supabase connection ended up figuring out that there is ban on supabase in india .
+
+            Got to know abt dns isolation , ping db , network resolving
+            
+
 

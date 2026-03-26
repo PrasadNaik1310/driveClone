@@ -1,7 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/PrasadNaik1310/driveClone/db"
 	"github.com/PrasadNaik1310/driveClone/handlers"
@@ -13,8 +18,9 @@ import (
 
 func main() {
 	if err := godotenv.Load(); err != nil {
-		log.Fatal(err)
+		log.Print(err)
 		log.Fatal("env file not found, main file error")
+		return
 	}
 	r := gin.Default()
 	/*r.Use(middleware.ErrorHandler())
@@ -34,8 +40,8 @@ func main() {
 
 	err := db.InitDb()
 	if err != nil {
-		log.Fatal(err)
-		log.Println("Error in initializing db . coming from main...")
+		log.Print(err)
+		log.Fatal("Error in initializing db . coming from main...")
 
 	}
 	r.GET("/health", func(c *gin.Context) {
@@ -56,4 +62,24 @@ func main() {
 			folder.GET("DeleteFolder", handlers.DeleteFolder)
 		}
 	}
+	port := os.Getenv("port")
+	if port == "" {
+		log.Println("Port not found , going fo rport 8080")
+		port = "8080"
+	}
+	go func() {
+		srv := &http.Server{
+			Addr:    ":" + port,
+			Handler: r,
+		}
+		log.Printf("Starting server on port %s", port)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Could not start server %v", err)
+		}
+	}()
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	fmt.Println("Signal recived for shutdown , going for shutdown")
+
 }
