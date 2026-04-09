@@ -36,7 +36,7 @@ func InitDb() error {
 		}
 	} else if !strings.Contains(dsn, "connect_timeout") {
 		// DSN format (key=value pairs)
-		dsn += " connect_timeout=10"
+		dsn += "&X connect_timeout=10"
 	}
 
 	database, err := gorm.Open(postgres.Open(dsn), &gorm.Config{

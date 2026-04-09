@@ -3,13 +3,13 @@ package models
 import "time"
 
 type File struct {
-	ID         string    `gorm:"primaryKey" json:"id"`
+	ID         string    `gorm:"primaryKey" json:"fileid"`
 	Name       string    `json:"name"`
-	FolderID   *string   `json:"folder_id"` // nullable (root files)
-	OwnerID    uint      `json:"owner_id"`
-	StorageKey string    `json:"storage_key"` // S3 key
+	FolderID   *string   `json:"folderid"` // nullable (root files)
+	OwnerID    uint      `json:"ownerid"`
+	StorageKey string    `json:"storagekey"` // S3 key
 	Size       int64     `json:"size"`
-	MimeType   string    `json:"mime_type"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	MimeType   string    `json:"mimetype"`
+	CreatedAt  time.Time `json:"createdat"`
+	UpdatedAt  time.Time `json:"updatedat"`
 }

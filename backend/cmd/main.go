@@ -61,6 +61,10 @@ func main() {
 			folder.POST("/CreateFolder", handlers.CreateFolder)
 			folder.GET("DeleteFolder", handlers.DeleteFolder)
 		}
+		file := api.Group("/file")
+		{
+			file.POST("UploadFile", handlers.UploadFile)
+		}
 	}
 	port := os.Getenv("port")
 	if port == "" {
