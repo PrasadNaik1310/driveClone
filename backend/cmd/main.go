@@ -10,6 +10,7 @@ import (
 
 	"github.com/PrasadNaik1310/driveClone/db"
 	"github.com/PrasadNaik1310/driveClone/handlers"
+	"github.com/PrasadNaik1310/driveClone/middleware"
 
 	//"github.com/PrasadNaik1310/driveClone/routes"
 	"github.com/gin-gonic/gin"
@@ -23,6 +24,7 @@ func main() {
 		return
 	}
 	r := gin.Default()
+	
 	/*r.Use(middleware.ErrorHandler())
 	r.Use(middleware.RequestLogging())*/
 	r.Use(func(c *gin.Context) {
@@ -56,12 +58,13 @@ func main() {
 		{
 			auth.POST("/login", handlers.Login)
 		}
-		folder := api.Group("/folder")
+		protected := api.Group("", middleware.AuthMiddleWare())
+		folder := protected.Group("/folder")
 		{
 			folder.POST("/CreateFolder", handlers.CreateFolder)
 			folder.GET("DeleteFolder", handlers.DeleteFolder)
 		}
-		file := api.Group("/file")
+		file := protected.Group("/file")
 		{
 			file.POST("UploadFile", handlers.UploadFile)
 		}

@@ -9,9 +9,22 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/PrasadNaik1310/driveClone/models"
+	"github.com/PrasadNaik1310/driveClone/db"
 )
 
 func UploadFile(c *gin.Context) {
+	userIdRaw, exists := c.Get("user_id")
+	if ! exists{
+	c.JSON(http.StatusUnauthorized, gin.H{"Error": "Unauthenticated user "})
+	log.Printf("Unauthenticated access attempt from %s", c.ClientIP())
+	return
+	}
+UserId, ok := userIdRaw.(uint)
+if !ok {
+	c.JSON(http.StatusInternalServerError, gin.H{"error": "invalid user_id type"})
+	log.Printf("Invalid user_id type: expected uint, got %T", userIdRaw)
+	return}
 	newFileName := c.PostForm("newfilename")
 
 	var fileHeaderName string
@@ -78,12 +91,42 @@ func UploadFile(c *gin.Context) {
 	}
 
 	log.Printf("Got file :-> %s (field: %s) from client %s ", storageName, fileHeaderName, c.ClientIP())
-	c.JSON(http.StatusOK, gin.H{
+	/*c.JSON(http.StatusOK, gin.H{
 		"file":        fh.Filename,
 		"newfilename": newFileName,
 		"storageName": storageName,
 		"folder_id":   folderId,
 		"file_field":  fileHeaderName,
+	})*/
+	log.Printf("Moving for db migration for file %s (field: %s) from client %s ", storageName, fileHeaderName, c.ClientIP())
+	
+	var fileModel models.File 
+
+fileModel.ID = fileID
+fileModel.Name = newFileName
+fileModel.OwnerID  = UserId
+fileModel.StorageKey = filePath
+fileModel.FolderID = &folderId
+fileModel.Size = fh.Size
+fileModel.MimeType = fh.Header.Get("Content-Type")
+
+if err := db.DB.Create(&fileModel).Error; err != nil {
+	log.Printf("Error migrating file %s to DB :%v",fileModel.Name, err)
+	c.JSON(http.StatusInternalServerError, gin.H{
+		"Error": "Could not migrate the file from disk to DB . Try again ",
+	})
+	log.Printf("Deleting file %s from disk", fileModel.Name)
+deleteErr := os.Remove(filePath)
+if deleteErr != nil {
+	log.Printf("Error deleting file %s from disk after failed migration", fileModel.StorageKey, deleteErr)
+}
+	return
+}
+log.Printf("File %s migrated to DB , DONEEEE",fileModel.StorageKey)
+c.JSON(http.StatusOK, gin.H{
+	"message": "File uploaded and migrated to DB successfully",
+	"file":    fileModel,
 	})
 
 }
+

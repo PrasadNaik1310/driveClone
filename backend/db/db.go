@@ -75,6 +75,33 @@ func InitDb() error {
 		return err
 	}
 	log.Printf("File table migrated")
+
+	defaultEmail := os.Getenv("DEFAULT_TEST_EMAIL")
+	if defaultEmail == "" {
+		defaultEmail = "1@2.com"
+	}
+	defaultPassword := os.Getenv("DEFAULT_TEST_PASSWORD")
+	if defaultPassword == "" {
+		defaultPassword = "123"
+	}
+
+	var testUser models.User
+	if err := DB.Where("user_email = ?", defaultEmail).First(&testUser).Error; err != nil {
+		testUser = models.User{
+			UserEmail: defaultEmail,
+			Password:  defaultPassword,
+			UserName:  "Test User",
+			UserId:    "test-user-001",
+		}
+		if createErr := DB.Create(&testUser).Error; createErr != nil {
+			log.Printf("failed to create default test user: %v", createErr)
+			return createErr
+		}
+		log.Printf("default test user created: %s", defaultEmail)
+	} else {
+		log.Printf("default test user already exists: %s", defaultEmail)
+	}
+
 	log.Printf("DB Chaluuuuuuuuuu")
 
 	return nil

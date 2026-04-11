@@ -23,14 +23,14 @@ func AuthMiddleWare() gin.HandlerFunc{
 			c.Abort()
 			return 
 		}
-		parts := strings.Split(authHeader," ")
-		if(len(parts) != 2 || parts[0] != "Bearer"){
+		parts := strings.Fields(authHeader)
+		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
 			log.Printf("Invalid format for request %s from client ip %s",c.Request.Method,c.ClientIP())
 			c.JSON(http.StatusUnauthorized,gin.H{"Error":"Invalid format for auth headers"})
 			c.Abort()
 			return 
 		}
-		tokenString := parts[1]
+		tokenString := strings.TrimSpace(parts[1])
 		jwtSecret := os.Getenv("JWT_SECRET")
 		if jwtSecret == ""{
 			c.JSON(http.StatusInternalServerError,gin.H{"Error":"JWT missing from server"})
@@ -75,6 +75,7 @@ if !ok {
 
 userID := uint(userIDFloat)
 c.Set("user_id", userID)
+c.Set("userId", userID)
 		//c.Set("")
 		c.Next()
 	}

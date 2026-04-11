@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/PrasadNaik1310/driveClone/db"
@@ -16,19 +17,34 @@ func Login(c *gin.Context) {
 
 	var user struct {
 		UserEmail string `json:"useremail"`
+		Password  string `json:"password"`
 	}
 
 	if err := c.ShouldBindJSON(&user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	user.UserEmail = strings.TrimSpace(user.UserEmail)
+	if user.UserEmail == "" || user.Password == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "useremail and password are required"})
+		return
+	}
+
 	var loginUser models.User
-	if err := db.DB.Where("useremail=?", loginUser.UserEmail).First(&loginUser.UserEmail).Error; err != nil {
-		log.Printf("User not found %s. Error from loginHandler...", loginUser.UserEmail)
+	if err := db.DB.Where("user_email = ?", user.UserEmail).First(&loginUser).Error; err != nil {
+		log.Printf("User not found %s. Error from loginHandler...", user.UserEmail)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
 
 	}
+
+	if loginUser.Password != user.Password {
+		log.Printf("Invalid password for user %s", user.UserEmail)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		return
+	}
+
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
 		log.Printf("jwt secret not found in environment , check for secret config ")
@@ -36,13 +52,12 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	log.Printf("JWT_SECRET for token generation: %s", jwtSecret[:10]+"...")
-
 	// Generate token
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"userEmail": user.UserEmail,
-		//"user":      user.userId,
-		"exp": time.Now().Add(time.Hour * 24).Unix(),
+		"user_email": loginUser.UserEmail,
+		"user_id":    loginUser.ID,
+		//setting expiry to 10000 hours for testing , to be changed in prod.
+		"exp":        time.Now().Add(time.Hour * 10000).Unix(),
 	})
 
 	tokenString, err := token.SignedString([]byte(jwtSecret))
@@ -58,7 +73,7 @@ func Login(c *gin.Context) {
 		"token": tokenString,
 		"user": gin.H{
 			"userEmail": loginUser.UserEmail,
-			"userId":    loginUser.UserId,
+			"userId":    loginUser.ID,
 			//"phone":      patient.Phoneno,
 		},
 	})
