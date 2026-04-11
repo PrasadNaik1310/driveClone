@@ -1,0 +1,24 @@
+***************************
+THis document's sole purpose is to have a day to day timeline of what was done on which date. 
+
+09-03-2026:-> Set up auth (currently using jwt).
+              learnt abt oauth2 while implementation , might switch to oauth2 later .
+              JWT IMPORT DEPENDENCY FAILING . Resolve in next commit .
+10-03-2026:-> Modules DEPENDENCY imports failed . Was not able to import JWT/v5 in login.go ,  tried editing the go.mod directly after installing the library again. 
+              go.mod and go.sum went out of sync. Tried running go mod tidy again , got error related to GORPOXY not configured.
+              configured GOPROXY to direct , proxy.golang.org and gosumdb to sum.golang.org . Found it the whole issue was abt configurations.
+              Turned off the TOOLCHAIN to local so that it does not update the TOOLCHAIN everytime project is built.
+              Learn abt go TOOLCHAIN, gosumdb , GOPROXY , gomodcache.
+20-03-2026:->
+                back after midsems. Starting with hirerachy module . Setting up schema for folder , files .
+
+25:-3-2026:->
+                finally done with Setting up the folder routes . 
+
+26-03-2026:-> 
+            Folder hirerachy setup complete . Attempted supabase connection ended up figuring out that there is ban on supabase in india .
+
+            Got to know abt dns isolation , ping db , network resolving
+            
+
+
