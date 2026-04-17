@@ -20,5 +20,17 @@ THis document's sole purpose is to have a day to day timeline of what was done o
 
             Got to know abt dns isolation , ping db , network resolving
             
+17-04-2026:-> Implemented various modules during the 19 days gap which were not documented  as follows:->
+                1. Upload File module , got the file first on the server(disk) and then to the db , will be moving disk to s3 
+                2.  Implemented DB sync while taking into consideration edge cases of orpahn file 
+                3. Got the download working , figured out auth headers problem in postman , configured manually. Served the file to client from DB
+                4. Implemented Delete endpoint , was easy , just had to handle the edge cases of orphan files , and garbage records , HANDLED
+                5. Invalid user is blocked throughout the system by middleware . 
+
+         -> Now will start learning s3 , aws and move the application to scale . 
+         -> Not developing frontend for now .        
+
+18-04-2026:->
+
 
 
