@@ -137,7 +137,7 @@ func DownloadFile(c *gin.Context) {
 		return
 	}
 
-	// 🔹 Get user
+
 	userIDRaw, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthenticated"})
@@ -146,7 +146,7 @@ func DownloadFile(c *gin.Context) {
 
 	userID := userIDRaw.(uint)
 
-	// 🔹 Fetch file from DB
+
 	var file models.File
 	if err := db.DB.Where("id = ? AND owner_id = ?", fileID, userID).
 		First(&file).Error; err != nil {
@@ -155,7 +155,66 @@ func DownloadFile(c *gin.Context) {
 		return
 	}
 
-	// 🔹 Serve file
+
 	c.FileAttachment(file.StorageKey, file.Name)
 }
 
+func DeleteFile(c *gin.Context) {
+
+	fileId := c.Param("id")
+	if fileId == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "file id required"})
+		return
+	}
+
+
+	userIdRaw, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthenticated"})
+		return
+	}
+
+	userId, ok := userIdRaw.(uint)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "invalid user_id type"})
+		return
+	}
+
+	
+	var file models.File
+	if err := db.DB.Where("id = ? AND owner_id = ?", fileId, userId).
+		First(&file).Error; err != nil {
+
+		c.JSON(http.StatusNotFound, gin.H{"error": "file not found or access denied"})
+		return
+	}
+
+	
+	err := os.Remove(file.StorageKey)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete file from disk"})
+			log.Printf("Error deleting file %s from disk: %v", file.StorageKey, err)
+			return
+		}
+		// file already missing → continue
+		log.Printf("File already missing on disk: %s", file.StorageKey)
+	}
+
+	log.Printf("File %s deleted from disk", file.Name)
+
+	
+	if err := db.DB.Delete(&file).Error; err != nil {
+		log.Printf("Error deleting file from DB %s: %v", file.Name, err)
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "failed to delete file metadata",
+		})
+		return
+	}
+
+	
+	c.JSON(http.StatusOK, gin.H{
+		"message": "file deleted successfully",
+	})
+}

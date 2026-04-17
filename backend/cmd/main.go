@@ -68,6 +68,7 @@ func main() {
 		{
 			file.POST("/UploadFile", handlers.UploadFile)
 			file.GET("/DownloadFile/:id", handlers.DownloadFile)
+			file.DELETE("/DeleteFile/:id", handlers.DeleteFile)
 		}
 	}
 	port := os.Getenv("port")
