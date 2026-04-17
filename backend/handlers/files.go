@@ -129,4 +129,33 @@ c.JSON(http.StatusOK, gin.H{
 	})
 
 }
+func DownloadFile(c *gin.Context) {
+
+	fileID := c.Param("id")
+	if fileID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "file id required"})
+		return
+	}
+
+	// 🔹 Get user
+	userIDRaw, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthenticated"})
+		return
+	}
+
+	userID := userIDRaw.(uint)
+
+	// 🔹 Fetch file from DB
+	var file models.File
+	if err := db.DB.Where("id = ? AND owner_id = ?", fileID, userID).
+		First(&file).Error; err != nil {
+
+		c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+		return
+	}
+
+	// 🔹 Serve file
+	c.FileAttachment(file.StorageKey, file.Name)
+}
 

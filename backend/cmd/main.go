@@ -62,11 +62,12 @@ func main() {
 		folder := protected.Group("/folder")
 		{
 			folder.POST("/CreateFolder", handlers.CreateFolder)
-			folder.GET("DeleteFolder", handlers.DeleteFolder)
+			folder.GET("/DeleteFolder", handlers.DeleteFolder)
 		}
 		file := protected.Group("/file")
 		{
-			file.POST("UploadFile", handlers.UploadFile)
+			file.POST("/UploadFile", handlers.UploadFile)
+			file.GET("/DownloadFile/:id", handlers.DownloadFile)
 		}
 	}
 	port := os.Getenv("port")
