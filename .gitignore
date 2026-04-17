@@ -39,7 +39,7 @@ backend_api/.env.local
 # Backend
 backend_api/uploads/
 backend_api/vendor/
-
+backend/cmd/uploads
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
