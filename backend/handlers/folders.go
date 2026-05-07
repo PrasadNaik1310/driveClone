@@ -129,6 +129,6 @@ func FolderContents(c *gin.Context) {
 }
 
 func DeleteFolder(c *gin.Context) {
-window.alert("Under construction , will be shipped soooooon!!")
+//
 return
 }

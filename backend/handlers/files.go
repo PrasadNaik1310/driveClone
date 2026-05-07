@@ -1,30 +1,36 @@
 package handlers
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/PrasadNaik1310/driveClone/db"
+	"github.com/PrasadNaik1310/driveClone/models"
+	"github.com/PrasadNaik1310/driveClone/utils"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/PrasadNaik1310/driveClone/models"
-	"github.com/PrasadNaik1310/driveClone/db"
+	"github.com/joho/godotenv"
 )
 
 func UploadFile(c *gin.Context) {
 	userIdRaw, exists := c.Get("user_id")
-	if ! exists{
-	c.JSON(http.StatusUnauthorized, gin.H{"Error": "Unauthenticated user "})
-	log.Printf("Unauthenticated access attempt from %s", c.ClientIP())
-	return
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"Error": "Unauthenticated user "})
+		log.Printf("Unauthenticated access attempt from %s", c.ClientIP())
+		return
 	}
-UserId, ok := userIdRaw.(uint)
-if !ok {
-	c.JSON(http.StatusInternalServerError, gin.H{"error": "invalid user_id type"})
-	log.Printf("Invalid user_id type: expected uint, got %T", userIdRaw)
-	return}
+	UserId, ok := userIdRaw.(uint)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "invalid user_id type"})
+		log.Printf("Invalid user_id type: expected uint, got %T", userIdRaw)
+		return
+	}
 	newFileName := c.PostForm("newfilename")
 
 	var fileHeaderName string
@@ -57,11 +63,11 @@ if !ok {
 		}
 
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error":                "File not found in request. Send multipart/form-data with a file field named 'file'",
+			"error":                 "File not found in request. Send multipart/form-data with a file field named 'file'",
 			"received_content_type": c.ContentType(),
 			"received_form_keys":    receivedKeys,
 			"tried_file_fields":     []string{"file", "files", "upload", "document"},
-			"details":              fileErr.Error(),
+			"details":               fileErr.Error(),
 		})
 		return
 	}
@@ -71,11 +77,38 @@ if !ok {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Unable to read uploaded file"})
 		return
 	}
+	fileStream, err := fh.Open()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to stream file "})
+		log.Printf("Unable to stream file %v", fh.Filename)
+		return
+	}
+	errEnv := godotenv.Load()
+	if errEnv != nil {
+		log.Printf("error loading env file (s3 configs)")
+		return
+	}
+	//
+	//
+
+	defer fileStream.Close()
 	folderId := c.PostForm("folder_id")
 	// creating a storage for each file because i cant store raw files as there as chances of file duplicate names .
 	ext := filepath.Ext(fh.Filename)
 	fileID := uuid.New().String()
 	storageName := fileID + ext
+	// calling s3 client and starting s3 uploads
+	client, err := utils.NewS3Client()
+	_, err = client.PutObject(context.TODO(), &s3.PutObjectInput{
+		Bucket: aws.String(os.Getenv("AWS_BUCKET_NAME")),
+		Key:    aws.String(storageName),
+		Body:   fileStream,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload file to s3, error in putObject"})
+		log.Printf("Error in putObject , %v", err)
+		return
+	}
 
 	os.MkdirAll("uploads", os.ModePerm)
 	filePath := filepath.Join("uploads", storageName)
@@ -99,33 +132,33 @@ if !ok {
 		"file_field":  fileHeaderName,
 	})*/
 	log.Printf("Moving for db migration for file %s (field: %s) from client %s ", storageName, fileHeaderName, c.ClientIP())
-	
-	var fileModel models.File 
 
-fileModel.ID = fileID
-fileModel.Name = newFileName
-fileModel.OwnerID  = UserId
-fileModel.StorageKey = filePath
-fileModel.FolderID = &folderId
-fileModel.Size = fh.Size
-fileModel.MimeType = fh.Header.Get("Content-Type")
+	var fileModel models.File
 
-if err := db.DB.Create(&fileModel).Error; err != nil {
-	log.Printf("Error migrating file %s to DB :%v",fileModel.Name, err)
-	c.JSON(http.StatusInternalServerError, gin.H{
-		"Error": "Could not migrate the file from disk to DB . Try again ",
-	})
-	log.Printf("Deleting file %s from disk", fileModel.Name)
-deleteErr := os.Remove(filePath)
-if deleteErr != nil {
-	log.Printf("Error deleting file %s from disk after failed migration", fileModel.StorageKey, deleteErr)
-}
-	return
-}
-log.Printf("File %s migrated to DB , DONEEEE",fileModel.StorageKey)
-c.JSON(http.StatusOK, gin.H{
-	"message": "File uploaded and migrated to DB successfully",
-	"file":    fileModel,
+	fileModel.ID = fileID
+	fileModel.Name = newFileName
+	fileModel.OwnerID = UserId
+	fileModel.StorageKey = storageName
+	fileModel.FolderID = &folderId
+	fileModel.Size = fh.Size
+	fileModel.MimeType = fh.Header.Get("Content-Type")
+
+	if err := db.DB.Create(&fileModel).Error; err != nil {
+		log.Printf("Error migrating file %s to DB :%v", fileModel.Name, err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"Error": "Could not migrate the file from disk to DB . Try again ",
+		})
+		log.Printf("Deleting file %s from disk", fileModel.Name)
+		deleteErr := os.Remove(filePath)
+		if deleteErr != nil {
+			log.Printf("Error deleting file %s from disk after failed migration", fileModel.StorageKey, deleteErr)
+		}
+		return
+	}
+	log.Printf("File %s migrated to DB , DONEEEE", fileModel.StorageKey)
+	c.JSON(http.StatusOK, gin.H{
+		"message": "File uploaded and migrated to DB successfully",
+		"file":    fileModel,
 	})
 
 }
@@ -137,7 +170,6 @@ func DownloadFile(c *gin.Context) {
 		return
 	}
 
-
 	userIDRaw, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthenticated"})
@@ -146,7 +178,6 @@ func DownloadFile(c *gin.Context) {
 
 	userID := userIDRaw.(uint)
 
-
 	var file models.File
 	if err := db.DB.Where("id = ? AND owner_id = ?", fileID, userID).
 		First(&file).Error; err != nil {
@@ -154,7 +185,6 @@ func DownloadFile(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
 		return
 	}
-
 
 	c.FileAttachment(file.StorageKey, file.Name)
 }
@@ -166,7 +196,6 @@ func DeleteFile(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "file id required"})
 		return
 	}
-
 
 	userIdRaw, exists := c.Get("user_id")
 	if !exists {
@@ -180,7 +209,6 @@ func DeleteFile(c *gin.Context) {
 		return
 	}
 
-	
 	var file models.File
 	if err := db.DB.Where("id = ? AND owner_id = ?", fileId, userId).
 		First(&file).Error; err != nil {
@@ -189,7 +217,6 @@ func DeleteFile(c *gin.Context) {
 		return
 	}
 
-	
 	err := os.Remove(file.StorageKey)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -203,7 +230,6 @@ func DeleteFile(c *gin.Context) {
 
 	log.Printf("File %s deleted from disk", file.Name)
 
-	
 	if err := db.DB.Delete(&file).Error; err != nil {
 		log.Printf("Error deleting file from DB %s: %v", file.Name, err)
 
@@ -213,7 +239,6 @@ func DeleteFile(c *gin.Context) {
 		return
 	}
 
-	
 	c.JSON(http.StatusOK, gin.H{
 		"message": "file deleted successfully",
 	})
