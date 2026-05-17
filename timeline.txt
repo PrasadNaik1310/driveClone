@@ -30,7 +30,7 @@ THis document's sole purpose is to have a day to day timeline of what was done o
          -> Now will start learning s3 , aws and move the application to scale . 
          -> Not developing frontend for now .        
 
-18-04-2026:->
-
-
+7-05-2026:->
+              finished Learning S3 . Upload to s3 implemented . Going for download from s3 and delete from s3.       
+              DELETE from s3 implemented , download pending , learning file streaming for downloads.
 

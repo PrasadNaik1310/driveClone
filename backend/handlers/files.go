@@ -217,18 +217,37 @@ func DeleteFile(c *gin.Context) {
 		return
 	}
 
-	err := os.Remove(file.StorageKey)
+	log.Println("Starting delete from S3")
+	storageKey := file.StorageKey
+	client, err := utils.NewS3Client()
 	if err != nil {
-		if !os.IsNotExist(err) {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete file from disk"})
-			log.Printf("Error deleting file %s from disk: %v", file.StorageKey, err)
-			return
-		}
-		// file already missing → continue
-		log.Printf("File already missing on disk: %s", file.StorageKey)
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": "Failed to spin up s3 client "})
+		log.Printf("Failed to spin up S3 client %v", err)
+		return
 	}
-
-	log.Printf("File %s deleted from disk", file.Name)
+	_, errDeleteObject := client.DeleteObject(context.TODO(), &s3.DeleteObjectInput{
+		Bucket: aws.String(os.Getenv("AWS_BUCKET_NAME")),
+		Key:    aws.String(storageKey),
+	})
+	if errDeleteObject != nil {
+		log.Printf(" Could not delete file from s3 :-> %v", errDeleteObject)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not delete File from s3 try again later"})
+		return
+	}
+	log.Printf("Deletion from s3 complete :-> %v", storageKey)
+	//removing local deletion code for now .
+	/*	err := os.Remove(file.StorageKey)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete file from disk"})
+				log.Printf("Error deleting file %s from disk: %v", file.StorageKey, err)
+				return
+			}
+			// file already missing → continue
+			log.Printf("File already missing on disk: %s", file.StorageKey)
+		}
+	*/ //local file deleting code , not removing files for now , will start removing them once s3 delete flow is stable
+	//	log.Printf("File %s deleted from disk", file.Name)
 
 	if err := db.DB.Delete(&file).Error; err != nil {
 		log.Printf("Error deleting file from DB %s: %v", file.Name, err)
